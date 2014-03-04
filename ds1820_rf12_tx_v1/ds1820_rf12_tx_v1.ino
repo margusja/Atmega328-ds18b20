@@ -6,6 +6,7 @@
 #include <RF12.h>
 #include <Ports.h> //from jeelabs.org
 #include <avr/interrupt.h>
+#include <avr/sleep.h> //  Power Management and Sleep Modes http://www.nongnu.org/avr-libc/user-manual/group__avr__sleep.html
 //#include <avr/wdt.h>
 
 // 10 - parandatud reguga
@@ -21,14 +22,15 @@ uint32_t timer;
 OneWire  ds(7);  // on pin 10
 //#define LEDPIN 13
 
+// counter for interrupt
+int count = 0;
+
 int do_measurement();
 
 void setup()
 {
-	//turns C0 HIGH
-	//PORTC |=(1<<0);
-	//pinMode(LEDPIN, OUTPUT);
-	//Set PORTC to all outputs
+	// ADCSRA = 0; // disable ADC
+	// PRR = 0xFF;  // turn off various modules
 	
 	
 	rf12_initialize(myNodeID,freq,network);   //Initialize RFM12 with settings defined above
@@ -65,6 +67,10 @@ void setup()
 
 ISR(TIMER1_OVF_vect)
 {
+	if (count > 10)
+	{
+	count = 0;	
+	
 	//Serial.println("TIMER1_OVF_vect...");	
 	// stop counter
 	//TCCR1B &= ~(1 << CS10);
@@ -96,6 +102,11 @@ ISR(TIMER1_OVF_vect)
 		
 	// enable global interrupts:
 	sei();
+	}
+	else
+	{
+		count ++;
+	}
 }
 
 int do_measurement() {
@@ -211,4 +222,17 @@ void loop()
 	
 	//Serial.println("loop...");
 	//wdt_reset();
+	
+	set_sleep_mode (SLEEP_MODE_IDLE );
+	sleep_enable();
+	
+	// turn off brown-out enable in software
+	///MCUCR = bit (BODS) | bit (BODSE);
+	//MCUCR = bit (BODS);
+	
+	sleep_cpu ();
+	
+	// cancel sleep as a precaution
+	sleep_disable();
+
 }
